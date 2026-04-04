@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import Layout from './layouts/Layout'
 import Home from './pages/Home'
@@ -11,6 +11,9 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
+        {/* Redirect login to home (no auth needed) */}
+        <Route path="/login" element={<Navigate to="/" replace />} />
+        
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="home" element={<Home />} />
