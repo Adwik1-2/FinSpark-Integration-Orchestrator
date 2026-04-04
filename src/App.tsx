@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import Layout from './layouts/Layout'
 import Home from './pages/Home'
+import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import NewIntegration from './pages/NewIntegration'
 import APIRegistry from './pages/APIRegistry'
@@ -11,9 +12,10 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* Redirect login to home (no auth needed) */}
-        <Route path="/login" element={<Navigate to="/" replace />} />
+        {/* Public Routes */}
+        <Route path="/login" element={<Login />} />
         
+        {/* Main Routes */}
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="home" element={<Home />} />
@@ -22,6 +24,9 @@ export default function App() {
           <Route path="api-registry" element={<APIRegistry />} />
           <Route path="configurations" element={<Configurations />} />
         </Route>
+        
+        {/* Catch all - redirect to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
   )
