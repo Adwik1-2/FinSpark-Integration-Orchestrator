@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
 import Layout from './layouts/Layout'
 import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
@@ -8,15 +9,17 @@ import Configurations from './pages/Configurations'
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={<Home />} />
-        <Route path="home" element={<Home />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="new-integration" element={<NewIntegration />} />
-        <Route path="api-registry" element={<APIRegistry />} />
-        <Route path="configurations" element={<Configurations />} />
-      </Route>
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="home" element={<Home />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="new-integration" element={<NewIntegration />} />
+          <Route path="api-registry" element={<APIRegistry />} />
+          <Route path="configurations" element={<Configurations />} />
+        </Route>
+      </Routes>
+    </AuthProvider>
   )
 }
