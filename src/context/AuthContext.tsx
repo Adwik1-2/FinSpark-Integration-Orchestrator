@@ -18,6 +18,7 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   clearError: () => void
+  setUser: (user: User | null, token?: string | null) => void
 }
 
 const defaultUser: User = {
@@ -38,6 +39,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   logout: async () => {},
   clearError: () => {},
+  setUser: () => {},
 })
 
 export const useAuth = () => {
@@ -53,6 +55,7 @@ export const useAuth = () => {
       login: async () => {},
       logout: async () => {},
       clearError: () => {},
+      setUser: () => {},
     }
   }
   return context
@@ -120,6 +123,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setError(null)
   }
 
+  const setUserDirect = (newUser: User | null, newToken?: string | null) => {
+    setUser(newUser)
+    if (newToken) {
+      setToken(newToken)
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -132,6 +142,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         login,
         logout,
         clearError,
+        setUser: setUserDirect,
       }}
     >
       {children}
