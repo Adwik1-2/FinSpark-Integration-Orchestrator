@@ -1,42 +1,54 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Terminal, GitMerge, Rocket, CheckCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Terminal, GitMerge, Rocket, CheckCircle, AlertCircle } from 'lucide-react'
 import Confetti from '../Confetti'
+import { useIntegration } from '../../context/IntegrationContext'
 
 interface StepSimulateProps {
   onBack: () => void
 }
 
-const mockLogs = [
-  { time: '09:31:01', level: 'INFO', msg: 'Initializing integration pipeline...' },
-  { time: '09:31:02', level: 'INFO', msg: 'Connecting to Stripe API v2.3...' },
-  { time: '09:31:02', level: 'SUCCESS', msg: 'Stripe connection established' },
-  { time: '09:31:03', level: 'INFO', msg: 'Authenticating with Salesforce OAuth...' },
-  { time: '09:31:04', level: 'SUCCESS', msg: 'Salesforce auth token received' },
-  { time: '09:31:05', level: 'INFO', msg: 'Running schema validation...' },
-  { time: '09:31:06', level: 'INFO', msg: 'Field mapping: customer_id → contact_id ✓' },
-  { time: '09:31:06', level: 'INFO', msg: 'Field mapping: amount → deal_value ✓' },
-  { time: '09:31:07', level: 'WARN', msg: 'Type coercion needed: datetime → date' },
-  { time: '09:31:08', level: 'INFO', msg: 'Simulating 100 test records...' },
-  { time: '09:31:10', level: 'SUCCESS', msg: '100/100 records processed successfully' },
-  { time: '09:31:11', level: 'SUCCESS', msg: 'All validations passed. Ready to deploy!' },
-]
-
-const diffLines = [
-  { type: 'context', content: '  integration:' },
-  { type: 'added', content: '+   name: stripe-salesforce-prod' },
-  { type: 'added', content: '+   version: "1.0.0"' },
-  { type: 'removed', content: '-   name: stripe-salesforce-dev' },
-  { type: 'context', content: '  source:' },
-  { type: 'context', content: '    api: stripe' },
-  { type: 'added', content: '+   endpoint: /v1/charges' },
-]
-
 export default function StepSimulate({ onBack }: StepSimulateProps) {
-  const [visibleLogs, setVisibleLogs] = useState<typeof mockLogs>([])
+  const [visibleLogs, setVisibleLogs] = useState<Array<{time: string; level: string; msg: string}>>([])
   const [simulating, setSimulating] = useState(false)
   const [deployed, setDeployed] = useState(false)
   const [tab, setTab] = useState<'console' | 'diff'>('console')
+  const { uploadData, currentDocumentIndex } = useIntegration()
+  const navigate = useNavigate()
+
+  if (!uploadData) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3 bg-red-900/30 border border-red-500/50 rounded-lg px-4 py-3">
+          <AlertCircle className="w-4 h-4 text-red-400" />
+          <span className="text-sm text-red-300">No simulation data available. Please complete analysis first.</span>
+        </div>
+        <div className="flex justify-between">
+          <button onClick={onBack} className="px-4 py-2.5 text-slate-400 hover:text-white text-sm transition-colors">
+            ← Back
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const currentResult = uploadData.results[currentDocumentIndex]
+  const pipelineSummary = currentResult?.result?.pipeline_summary
+  const simulation = currentResult?.result?.step_4_simulation
+
+  const mockLogs = [
+    { time: '09:31:01', level: 'INFO', msg: `Processing "${currentResult?.document_name}" for ${pipelineSummary?.workflow_type || 'integration'}...` },
+    { time: '09:31:02', level: 'INFO', msg: `Detected intent: ${pipelineSummary?.intent || 'N/A'}` },
+    { time: '09:31:02', level: 'SUCCESS', msg: `Schema validation completed` },
+    { time: '09:31:03', level: 'INFO', msg: `Extracted ${pipelineSummary?.field_count || 0} fields from document` },
+    { time: '09:31:04', level: 'SUCCESS', msg: `Field extraction quality: ${((pipelineSummary?.overall_quality_score || 0) * 100).toFixed(0)}%` },
+    { time: '09:31:05', level: 'INFO', msg: `Running field mapping validation...` },
+    { time: '09:31:06', level: 'SUCCESS', msg: `API mapping completeness: ${((pipelineSummary?.mapping_completeness || 0) * 100).toFixed(0)}%` },
+    { time: '09:31:07', level: 'INFO', msg: `Running deployment readiness check...` },
+    { time: '09:31:08', level: simulation?.deployment_readiness?.is_ready ? 'SUCCESS' : 'WARN', msg: `Deployment readiness score: ${((simulation?.deployment_readiness?.readiness_score || 0) * 100).toFixed(0)}%` },
+    { time: '09:31:09', level: 'SUCCESS', msg: `All validations passed. Ready for deployment!` },
+  ]
 
   const startSimulation = () => {
     setSimulating(true)
@@ -80,7 +92,7 @@ export default function StepSimulate({ onBack }: StepSimulateProps) {
             }`}
           >
             {t === 'console' ? <Terminal className="w-3.5 h-3.5" /> : <GitMerge className="w-3.5 h-3.5" />}
-            {t === 'console' ? 'Simulation Console' : 'Config Diff'}
+            {t === 'console' ? 'Simulation Console' : 'Status Report'}
           </button>
         ))}
       </div>
@@ -120,23 +132,40 @@ export default function StepSimulate({ onBack }: StepSimulateProps) {
       )}
 
       {tab === 'diff' && (
-        <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden">
-          <div className="px-4 py-2 border-b border-slate-800 bg-slate-900">
-            <span className="text-xs text-slate-500 font-mono">integration.config.yaml</span>
-          </div>
-          <div className="p-4 font-mono text-xs space-y-0.5">
-            {diffLines.map((line, i) => (
-              <div
-                key={i}
-                className={`px-2 py-0.5 rounded ${
-                  line.type === 'added' ? 'bg-emerald-900/30 text-emerald-400' :
-                  line.type === 'removed' ? 'bg-red-900/30 text-red-400' :
-                  'text-slate-400'
-                }`}
-              >
-                {line.content}
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-2">Document Analysis</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Document:</span>
+                  <span className="text-cyan-400">{currentResult?.document_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Fields Extracted:</span>
+                  <span className="text-emerald-400">{pipelineSummary?.field_count}</span>
+                </div>
               </div>
-            ))}
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-2">Deployment Readiness</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Status:</span>
+                  <span className={simulation?.deployment_readiness?.is_ready ? 'text-emerald-400' : 'text-amber-400'}>
+                    {simulation?.deployment_readiness?.is_ready ? 'Ready' : 'Review Needed'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Readiness Score:</span>
+                  <span className="text-emerald-400">{((simulation?.deployment_readiness?.readiness_score || 0) * 100).toFixed(0)}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Processing Time:</span>
+                  <span className="text-slate-300">{pipelineSummary?.total_processing_time_ms}ms</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -171,13 +200,21 @@ export default function StepSimulate({ onBack }: StepSimulateProps) {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl p-4 flex items-center gap-3"
+            className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl p-4 space-y-4"
           >
-            <CheckCircle className="w-6 h-6 text-emerald-400 flex-shrink-0" />
-            <div>
-              <p className="font-semibold text-emerald-400">Successfully Deployed! 🎉</p>
-              <p className="text-sm text-slate-400">Your integration is now live in production.</p>
+            <div className="flex items-center gap-3">
+              <CheckCircle className="w-6 h-6 text-emerald-400 flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-emerald-400">Successfully Deployed! 🎉</p>
+                <p className="text-sm text-slate-400">Your integration is now live in production.</p>
+              </div>
             </div>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+            >
+              <span>📊 View in Dashboard</span>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

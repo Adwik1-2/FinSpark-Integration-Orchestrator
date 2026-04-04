@@ -38,17 +38,16 @@ export default function SVGConnections({ connections, containerRef }: SVGConnect
       const x2 = toRect.left - rect.left
       const y2 = toRect.top + toRect.height / 2 - rect.top
 
-      const cx = (x1 + x2) / 2
-
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-      const d = `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`
+      // Use curved path (quadratic bezier) to avoid straight line crossing chaos
+      const midX = (x1 + x2) / 2
+      const d = `M ${x1} ${y1} Q ${midX} ${y1}, ${midX} ${(y1 + y2) / 2} T ${x2} ${y2}`
       path.setAttribute('d', d)
       path.setAttribute('fill', 'none')
       path.setAttribute('stroke', conn.confidence > 0.8 ? '#10b981' : conn.confidence > 0.6 ? '#f59e0b' : '#ef4444')
-      path.setAttribute('stroke-width', '1.5')
-      path.setAttribute('opacity', '0.7')
-      path.setAttribute('stroke-dasharray', '6 3')
-      path.setAttribute('class', 'flowing-line')
+      path.setAttribute('stroke-width', '2')
+      path.setAttribute('stroke-dasharray', '5, 5')
+      path.setAttribute('opacity', '0.6')
       svg.appendChild(path)
     })
   }, [connections, containerRef])
