@@ -18,4 +18,5 @@ export default function App() {
         <Route path="configurations" element={<Configurations />} />
       </Route>
     </Routes>
+  )
 }
